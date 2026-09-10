@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import json
 import os
-import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -25,13 +24,6 @@ STATUS_KEY = os.environ.get("STATUS_KEY")
 def fail(message, code=1):
     print("ERROR:", message, flush=True)
     raise SystemExit(code)
-
-
-def read_php_constant(path: Path, name: str):
-    text = path.read_text(encoding="utf-8", errors="replace")
-    pattern = r"const\s+" + re.escape(name) + r"\s*=\s*['\"]([^'\"]+)['\"]\s*;"
-    m = re.search(pattern, text)
-    return m.group(1) if m else None
 
 
 def load_json(path: Path):
@@ -239,17 +231,17 @@ def main():
 
     if not STATUS_KEY:
         fail("STATUS_KEY environment variable is missing")
-    config_local = BASE_DIR / "config.local.php"
-    config_main = BASE_DIR / "config.php"
-    for p in (config_local, config_main, OAUTH_FILE):
-        if not p.exists():
-            fail("Missing required file: " + str(p))
+    if not OAUTH_FILE.exists():
+        fail("Missing required file: " + str(OAUTH_FILE))
 
-    client_id = read_php_constant(config_local, "OAUTH_CLIENT_ID")
-    client_secret = read_php_constant(config_local, "OAUTH_CLIENT_SECRET")
-    realm = read_php_constant(config_main, "OAUTH_REALM") or "clientsB2CCitroen"
-    locale = read_php_constant(config_main, "LOCALE") or "fi-FI"
-    token_url = read_php_constant(config_main, "OAUTH_TOKEN_URL") or "https://idpcvs.citroen.com/am/oauth2/access_token"
+    client_id = os.environ.get("OAUTH_CLIENT_ID")
+    client_secret = os.environ.get("OAUTH_CLIENT_SECRET")
+    realm = os.environ.get("OAUTH_REALM", "clientsB2CCitroen")
+    locale = os.environ.get("LOCALE", "fi-FI")
+    token_url = os.environ.get(
+        "OAUTH_TOKEN_URL",
+        "https://idpcvs.citroen.com/am/oauth2/access_token",
+    )
 
     if not client_id or not client_secret:
         fail("OAuth client ID/secret missing")
