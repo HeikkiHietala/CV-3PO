@@ -25,3 +25,6 @@ Thumbs.db
 # Backups
 *.bak
 *.tar.gz
+
+# Third-party PSA Car Controller source
+src/psacc-src/
