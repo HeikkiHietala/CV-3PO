@@ -16,8 +16,8 @@ CV-3PO is an experimental Raspberry Pi based interface for retrieving status dat
 Clone the repository, create a Python virtual environment, and install the required Python packages:
 
 ```bash
-git clone https://github.com/HeikkiHietala/CV-3PO.git
-cd CV-3PO
+git clone https://github.com/HeikkiHietala/CV-3PO.git cv3po
+cd cv3po
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
