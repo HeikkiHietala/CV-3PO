@@ -81,10 +81,21 @@ These files contain private authentication material, are excluded by `.gitignore
 
 A tested oneshot service example is included in `systemd/cv3po-status.service.example`.
 
-Replace `YOUR_USER` with your Linux username, then install the service as follows:
+Copy the example service file into systemd:
 
 ```bash
 sudo cp systemd/cv3po-status.service.example /etc/systemd/system/cv3po-status.service
+```
+
+Edit the installed service file and replace `YOUR_USER` with your Linux username:
+
+```bash
+sudo micro /etc/systemd/system/cv3po-status.service
+```
+
+Then reload systemd and start the service:
+
+```bash
 sudo systemctl daemon-reload
 sudo systemctl start cv3po-status.service
 ```
