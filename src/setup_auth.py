@@ -11,8 +11,11 @@ Creates the authentication files required by CV-3PO:
 Existing authentication files are never overwritten automatically.
 """
 
+import json
 import os
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -29,6 +32,16 @@ SCOPE = ["openid", "profile"]
 def fail(message, code=1):
     print("ERROR:", message)
     raise SystemExit(code)
+
+def atomic_json(path: Path, data: dict):
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    os.chmod(tmp, 0o600)
+    tmp.replace(path)
+    os.chmod(path, 0o600)
 
 
 def require_env(name):
@@ -74,6 +87,22 @@ def main():
     )
     from psa_car_controller.psa.oauth import OpenIdCredentialManager
 
+    class CapturingOpenIdCredentialManager(OpenIdCredentialManager):
+        def __init__(self, service_information, proxies=None):
+            super().__init__(service_information, proxies)
+            self.last_token_response = None
+
+        def _process_token_response(
+            self,
+            token_response,
+            refresh_token_mandatory,
+        ):
+            self.last_token_response = dict(token_response)
+            super()._process_token_response(
+                token_response,
+                refresh_token_mandatory,
+            )
+
     client_id = require_env("OAUTH_CLIENT_ID")
     client_secret = require_env("OAUTH_CLIENT_SECRET")
     realm = require_env("OAUTH_REALM")
@@ -91,10 +120,13 @@ def main():
         True,
     )
 
-    manager = OpenIdCredentialManager.create(
-        service_information,
-        realm_info[realm]["scheme"],
-        country_code,
+    manager = CapturingOpenIdCredentialManager(
+        service_information
+    )
+    manager.redirect_uri = (
+        realm_info[realm]["scheme"]
+        + "://oauth2redirect/"
+        + country_code.lower()
     )
 
     login_url = manager.generate_redirect_url()
