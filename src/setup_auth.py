@@ -143,8 +143,35 @@ def main():
     print()
     print(login_url)
     print()
-    print("PREVIEW ONLY: no OAuth request has been completed")
-    print("and no authentication files have been written.")
+    code = input("Enter the 36-character authorization code: ").strip()
+
+    try:
+        manager.connect_with_code(code)
+    except Exception as exc:
+        fail(f"OAuth authorization failed: {exc}")
+
+    data = manager.last_token_response
+    if not data:
+        fail("OAuth succeeded but no token response was captured")
+
+    if not data.get("access_token"):
+        fail("OAuth response does not contain access_token")
+
+    if not data.get("refresh_token"):
+        fail("OAuth response does not contain refresh_token")
+
+    expires_in = int(data.get("expires_in") or 0)
+    data["expires_at"] = datetime.fromtimestamp(
+        time.time() + expires_in,
+        timezone.utc,
+    ).isoformat()
+    data["stored_at"] = datetime.now(timezone.utc).isoformat()
+
+    atomic_json(OAUTH_FILE, data)
+
+    print()
+    print("OAuth authorization successful.")
+    print("Created:", OAUTH_FILE)
 
 
 if __name__ == "__main__":
