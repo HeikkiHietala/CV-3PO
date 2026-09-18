@@ -11,10 +11,13 @@ Creates the authentication files required by CV-3PO:
 Existing authentication files are never overwritten automatically.
 """
 
+import bz2
 import json
 import os
 import sys
 import time
+import urllib.request
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,6 +30,11 @@ OTP_FILE = BASE_DIR / "otp.bin"
 REMOTE_FILE = BASE_DIR / "remote_credentials.json"
 
 SCOPE = ["openid", "profile"]
+
+APK_BZ2_URL = (
+    "https://raw.githubusercontent.com/flobz/psa_apk/master/"
+    "mycitroen.apk.bz2"
+)
 
 
 def fail(message, code=1):
@@ -50,6 +58,79 @@ def require_env(name):
         fail(f"Missing required environment variable: {name}")
     return value
 
+
+
+def get_oauth_credentials_from_apk(country_code):
+    apk_bz2 = BASE_DIR / "mycitroen.apk.bz2"
+    apk_file = BASE_DIR / "mycitroen.apk"
+
+    print()
+    print("Retrieving MyCitroen application configuration...")
+
+    try:
+        print("Downloading MyCitroen APK (~32 MB)...")
+        urllib.request.urlretrieve(APK_BZ2_URL, apk_bz2)
+
+        print("Decompressing APK...")
+        with bz2.open(apk_bz2, "rb") as source:
+            with apk_file.open("wb") as target:
+                while True:
+                    chunk = source.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    target.write(chunk)
+
+        print("Reading OAuth configuration from APK...")
+
+        with zipfile.ZipFile(apk_file) as apk:
+            cultures = json.loads(
+                apk.read("res/raw/cultures.json")
+            )
+
+            country = country_code.upper()
+            if country not in cultures:
+                fail(
+                    "Country code is not present in MyCitroen APK: "
+                    + country
+                )
+
+            culture = cultures[country]["languages"][0]
+            language, region = culture.split("_", 1)
+
+            parameters_path = (
+                f"res/raw-{language}-r{region}/parameters.json"
+            )
+
+            parameters = json.loads(
+                apk.read(parameters_path)
+            )
+
+            client_id = parameters.get("cvsClientId")
+            client_secret = parameters.get("cvsSecret")
+
+            if not client_id or not client_secret:
+                fail(
+                    "OAuth client configuration was not found "
+                    "in MyCitroen APK"
+                )
+
+        print(
+            "OAuth application credentials found "
+            f"for {culture}."
+        )
+        return client_id, client_secret
+
+    except SystemExit:
+        raise
+    except Exception as exc:
+        fail(f"Could not retrieve OAuth configuration: {exc}")
+
+    finally:
+        for path in (apk_file, apk_bz2):
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 def main():
     print("CV-3PO initial authentication setup")
@@ -103,10 +184,12 @@ def main():
                 refresh_token_mandatory,
             )
 
-    client_id = require_env("OAUTH_CLIENT_ID")
-    client_secret = require_env("OAUTH_CLIENT_SECRET")
     realm = require_env("OAUTH_REALM")
     country_code = require_env("COUNTRY_CODE")
+
+    client_id, client_secret = get_oauth_credentials_from_apk(
+        country_code
+    )
 
     if realm not in realm_info or realm not in AUTHORIZE_SERVICE:
         fail(f"Unknown OAuth realm: {realm}")
