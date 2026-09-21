@@ -14,7 +14,9 @@ Existing authentication files are never overwritten automatically.
 import bz2
 import json
 import os
+import shutil
 import sys
+import tempfile
 import time
 import urllib.request
 import zipfile
@@ -139,6 +141,35 @@ def get_oauth_credentials_from_apk(country_code):
             except OSError:
                 pass
 
+
+def request_sms_code(manager, client_id, realm):
+    url = (
+        "https://api.groupe-psa.com/applications/cvs/v4/mobile/"
+        "smsCode?client_id=" + client_id
+    )
+    headers = {
+        "x-introspect-realm": realm,
+        "accept": "application/hal+json",
+        "User-Agent": "okhttp/4.8.0",
+    }
+
+    try:
+        response = manager.post(
+            url,
+            headers=headers,
+            timeout=30,
+        )
+    except Exception as exc:
+        fail(f"SMS code request failed: {exc}")
+
+    if not response.ok:
+        fail(
+            "SMS code request failed: "
+            f"HTTP {response.status_code}"
+        )
+
+    return response
+
 def main():
     print("CV-3PO initial authentication setup")
     print("-----------------------------------")
@@ -192,6 +223,9 @@ def main():
         realm_info,
     )
     from psa_car_controller.psa.oauth import OpenIdCredentialManager
+    from psa_car_controller.psa.otp.otp import (
+        new_otp_session,
+    )
 
     class CapturingOpenIdCredentialManager(OpenIdCredentialManager):
         def __init__(self, service_information, proxies=None):
