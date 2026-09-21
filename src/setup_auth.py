@@ -237,49 +237,88 @@ def main():
         + country_code.lower()
     )
 
-    login_url = manager.generate_redirect_url()
+    if OAUTH_FILE.exists():
+        oauth_data = load_json(OAUTH_FILE)
 
-    print()
-    print("No existing authentication files detected.")
-    print()
-    print("OAuth configuration:")
-    print("  Realm:        ", realm)
-    print("  Country code: ", country_code)
-    print("  Redirect URI: ", manager.redirect_uri)
-    print()
-    print("Open this URL in a browser:")
-    print()
-    print(login_url)
-    print()
-    code = input("Enter the 36-character authorization code: ").strip()
+        if not oauth_data.get("access_token"):
+            fail("Existing oauth.json does not contain access_token")
 
-    try:
-        manager.connect_with_code(code)
-    except Exception as exc:
-        fail(f"OAuth authorization failed: {exc}")
+        if not oauth_data.get("refresh_token"):
+            fail("Existing oauth.json does not contain refresh_token")
 
-    data = manager.last_token_response
-    if not data:
-        fail("OAuth succeeded but no token response was captured")
+        print("Existing oauth.json loaded successfully.")
+        print("Refreshing OAuth token...")
 
-    if not data.get("access_token"):
-        fail("OAuth response does not contain access_token")
+        old_refresh_token = oauth_data["refresh_token"]
 
-    if not data.get("refresh_token"):
-        fail("OAuth response does not contain refresh_token")
+        try:
+            manager.init_with_token(old_refresh_token)
+        except Exception as exc:
+            fail(f"OAuth token refresh failed: {exc}")
 
-    expires_in = int(data.get("expires_in") or 0)
-    data["expires_at"] = datetime.fromtimestamp(
-        time.time() + expires_in,
-        timezone.utc,
-    ).isoformat()
-    data["stored_at"] = datetime.now(timezone.utc).isoformat()
+        refreshed = manager.last_token_response
+        if not refreshed or not refreshed.get("access_token"):
+            fail("OAuth refresh succeeded but no access_token was captured")
 
-    atomic_json(OAUTH_FILE, data)
+        if not refreshed.get("refresh_token"):
+            refreshed["refresh_token"] = old_refresh_token
 
-    print()
-    print("OAuth authorization successful.")
-    print("Created:", OAUTH_FILE)
+        expires_in = int(refreshed.get("expires_in") or 0)
+        refreshed["expires_at"] = datetime.fromtimestamp(
+            time.time() + expires_in,
+            timezone.utc,
+        ).isoformat()
+        refreshed["stored_at"] = datetime.now(timezone.utc).isoformat()
+
+        atomic_json(OAUTH_FILE, refreshed)
+        oauth_data = refreshed
+
+        print("OAuth token refreshed successfully.")
+
+    else:
+        login_url = manager.generate_redirect_url()
+
+        print()
+        print("No existing authentication files detected.")
+        print()
+        print("OAuth configuration:")
+        print("  Realm:        ", realm)
+        print("  Country code: ", country_code)
+        print("  Redirect URI: ", manager.redirect_uri)
+        print()
+        print("Open this URL in a browser:")
+        print()
+        print(login_url)
+        print()
+        code = input("Enter the 36-character authorization code: ").strip()
+
+        try:
+            manager.connect_with_code(code)
+        except Exception as exc:
+            fail(f"OAuth authorization failed: {exc}")
+
+        data = manager.last_token_response
+        if not data:
+            fail("OAuth succeeded but no token response was captured")
+
+        if not data.get("access_token"):
+            fail("OAuth response does not contain access_token")
+
+        if not data.get("refresh_token"):
+            fail("OAuth response does not contain refresh_token")
+
+        expires_in = int(data.get("expires_in") or 0)
+        data["expires_at"] = datetime.fromtimestamp(
+            time.time() + expires_in,
+            timezone.utc,
+        ).isoformat()
+        data["stored_at"] = datetime.now(timezone.utc).isoformat()
+
+        atomic_json(OAUTH_FILE, data)
+
+        print()
+        print("OAuth authorization successful.")
+        print("Created:", OAUTH_FILE)
 
 
 if __name__ == "__main__":
