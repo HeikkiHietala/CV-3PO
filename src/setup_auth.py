@@ -170,6 +170,32 @@ def request_sms_code(manager, client_id, realm):
 
     return response
 
+
+def create_otp_file(sms_code, pin_code):
+    original_cwd = Path.cwd()
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="cv3po-otp-") as tmp:
+            tmp_path = Path(tmp)
+
+            os.chdir(tmp_path)
+            try:
+                new_otp_session(sms_code, pin_code)
+            finally:
+                os.chdir(original_cwd)
+
+            generated = tmp_path / "otp.bin"
+            if not generated.exists():
+                fail("OTP activation succeeded but otp.bin was not created")
+
+            shutil.copyfile(generated, OTP_FILE)
+            os.chmod(OTP_FILE, 0o600)
+
+    except SystemExit:
+        raise
+    except Exception as exc:
+        fail(f"OTP activation failed: {exc}")
+
 def main():
     print("CV-3PO initial authentication setup")
     print("-----------------------------------")
@@ -353,6 +379,37 @@ def main():
         print()
         print("OAuth authorization successful.")
         print("Created:", OAUTH_FILE)
+
+
+    if not OTP_FILE.exists():
+        print()
+        print("Requesting SMS activation code...")
+
+        request_sms_code(manager, client_id, realm)
+
+        print("SMS activation code requested.")
+        print()
+        sms_code = input("Enter the SMS activation code: ").strip()
+        pin_code = input("Choose a PIN for remote commands: ").strip()
+
+        if not sms_code:
+            fail("SMS activation code cannot be empty")
+
+        if not pin_code:
+            fail("PIN cannot be empty")
+
+        print()
+        print("Activating remote-command OTP...")
+
+        create_otp_file(sms_code, pin_code)
+
+        print("OTP activation successful.")
+        print("Created:", OTP_FILE)
+
+    else:
+        print()
+        print("Existing otp.bin detected.")
+        print("OTP provisioning already completed.")
 
 
 if __name__ == "__main__":
