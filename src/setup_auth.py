@@ -52,6 +52,13 @@ def atomic_json(path: Path, data: dict):
     os.chmod(path, 0o600)
 
 
+
+def load_json(path: Path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        fail(f"Could not read {path.name}: {exc}")
+
 def require_env(name):
     value = os.environ.get(name)
     if not value:
@@ -154,10 +161,28 @@ def main():
         for name in existing:
             print("  -", name)
 
+    if REMOTE_FILE.exists():
+        if not OAUTH_FILE.exists() or not OTP_FILE.exists():
+            fail(
+                "Authentication files are inconsistent: "
+                "remote_credentials.json exists without all prerequisites"
+            )
+
         print()
-        print("Setup stopped without changing anything.")
-        print("Existing authentication files are protected.")
+        print("Authentication setup is already complete.")
+        print("Existing authentication files were not changed.")
         return
+
+    if OTP_FILE.exists() and not OAUTH_FILE.exists():
+        fail(
+            "Authentication files are inconsistent: "
+            "otp.bin exists without oauth.json"
+        )
+
+    if OAUTH_FILE.exists():
+        print()
+        print("OAuth authorization already completed.")
+        print("Setup will continue with OTP provisioning.")
 
     sys.path.insert(0, str(PSACC_SRC))
 
