@@ -446,6 +446,7 @@ def main():
         data["stored_at"] = datetime.now(timezone.utc).isoformat()
 
         atomic_json(OAUTH_FILE, data)
+        oauth_data = data
 
         print()
         print("OAuth authorization successful.")
