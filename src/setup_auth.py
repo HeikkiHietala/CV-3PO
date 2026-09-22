@@ -14,6 +14,7 @@ Existing authentication files are never overwritten automatically.
 import bz2
 import json
 import os
+import requests
 import shutil
 import sys
 import tempfile
@@ -172,6 +173,8 @@ def request_sms_code(manager, client_id, realm):
 
 
 def create_otp_file(sms_code, pin_code):
+    from psa_car_controller.psa.otp.otp import new_otp_session
+
     original_cwd = Path.cwd()
 
     try:
@@ -195,6 +198,74 @@ def create_otp_file(sms_code, pin_code):
         raise
     except Exception as exc:
         fail(f"OTP activation failed: {exc}")
+
+
+def create_remote_credentials(client_id, access_token, realm):
+    from psa_car_controller.psa.otp.otp import load_otp, save_otp
+
+    api_base = "https://api.groupe-psa.com"
+    remote_token_url = (
+        api_base + "/connectedcar/v4/virtualkey/remoteaccess/token"
+    )
+
+    headers = {
+        "Authorization": "Bearer " + access_token,
+        "User-Agent": "okhttp/4.8.0",
+        "Accept": "application/hal+json",
+        "x-introspect-realm": realm,
+        "Content-Type": "application/json",
+    }
+
+    try:
+        otp = load_otp(str(OTP_FILE))
+        if otp is None:
+            fail("otp.bin could not be loaded")
+
+        otp_password = otp.get_otp_code()
+        save_otp(otp, str(OTP_FILE))
+        os.chmod(OTP_FILE, 0o600)
+
+        if not otp_password:
+            fail("OTP generator returned an empty value")
+
+        response = requests.post(
+            remote_token_url,
+            params={"client_id": client_id},
+            headers=headers,
+            json={
+                "grant_type": "password",
+                "password": otp_password,
+            },
+            timeout=30,
+        )
+
+    except SystemExit:
+        raise
+    except Exception as exc:
+        fail(f"Remote token request failed: {exc}")
+    finally:
+        otp_password = None
+
+    if not response.ok:
+        fail(
+            "Remote token request rejected: "
+            f"HTTP {response.status_code}"
+        )
+
+    try:
+        data = response.json()
+    except Exception as exc:
+        fail(f"Remote token response is not valid JSON: {exc}")
+
+    if not data.get("access_token"):
+        fail("Remote token response does not contain access_token")
+
+    data["stored_at"] = datetime.now(timezone.utc).isoformat()
+    atomic_json(REMOTE_FILE, data)
+
+    print("Remote-command credentials created.")
+    print("Created:", REMOTE_FILE)
+
 
 def main():
     print("CV-3PO initial authentication setup")
@@ -410,6 +481,21 @@ def main():
         print()
         print("Existing otp.bin detected.")
         print("OTP provisioning already completed.")
+
+    if not REMOTE_FILE.exists():
+        print()
+        print("Creating remote-command credentials...")
+
+        create_remote_credentials(
+            client_id,
+            oauth_data["access_token"],
+            realm,
+        )
+
+    else:
+        print()
+        print("Existing remote_credentials.json detected.")
+        print("Remote-command provisioning already completed.")
 
 
 if __name__ == "__main__":
