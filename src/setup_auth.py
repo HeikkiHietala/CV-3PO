@@ -26,6 +26,8 @@ from pathlib import Path
 
 
 BASE_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = BASE_DIR.parent
+ENV_FILE = PROJECT_DIR / ".env"
 PSACC_SRC = BASE_DIR / "psacc-src"
 
 OAUTH_FILE = BASE_DIR / "oauth.json"
@@ -68,6 +70,40 @@ def require_env(name):
         fail(f"Missing required environment variable: {name}")
     return value
 
+
+
+
+def save_oauth_client_to_env(client_id, client_secret):
+    if not ENV_FILE.exists():
+        fail(f"Missing .env file: {ENV_FILE}")
+
+    values = {
+        "OAUTH_CLIENT_ID": client_id,
+        "OAUTH_CLIENT_SECRET": client_secret,
+    }
+
+    lines = ENV_FILE.read_text(encoding="utf-8").splitlines()
+    found = set()
+    output = []
+
+    for line in lines:
+        key = line.split("=", 1)[0].strip() if "=" in line else None
+        if key in values:
+            output.append(f"{key}={values[key]}")
+            found.add(key)
+        else:
+            output.append(line)
+
+    if output and output[-1] != "":
+        output.append("")
+
+    for key, value in values.items():
+        if key not in found:
+            output.append(f"{key}={value}")
+
+    ENV_FILE.write_text("\n".join(output) + "\n", encoding="utf-8")
+    os.chmod(ENV_FILE, 0o600)
+    print("OAuth client settings saved to .env")
 
 
 def get_oauth_credentials_from_apk(country_code):
@@ -346,6 +382,7 @@ def main():
     client_id, client_secret = get_oauth_credentials_from_apk(
         country_code
     )
+    save_oauth_client_to_env(client_id, client_secret)
 
     if realm not in realm_info or realm not in AUTHORIZE_SERVICE:
         fail(f"Unknown OAuth realm: {realm}")
