@@ -25,12 +25,14 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Copy the example configuration and edit it with your own endpoint and Stellantis credentials:
+Copy the example configuration and edit it with your own endpoint settings:
 
 ```bash
 cp .env.example .env
 chmod 600 .env
 ```
+
+The Stellantis OAuth client ID and client secret do not need to be entered manually. They are discovered automatically during authentication setup and stored locally in `.env`.
 
 Never commit `.env`, OAuth tokens, OTP data, remote credentials, VINs, API keys, or other private vehicle/account information to Git.
 
@@ -69,13 +71,19 @@ python src/live_status.py
 
 ## Authentication files
 
+Run the authentication setup before using remote vehicle commands.
+
+Run `python src/setup_auth.py`.
+
+If authentication setup is interrupted, run the same command again. Completed authentication stages are reused where possible.
+
 Remote vehicle commands also require local authentication files in the `src` directory:
 
 - `oauth.json`
 - `remote_credentials.json`
 - `otp.bin`
 
-These files contain private authentication material, are excluded by `.gitignore`, and must never be committed or shared. The initial Stellantis authentication and provisioning procedure is not yet automated by this repository.
+These files contain private authentication material, are excluded by `.gitignore`, and must never be committed or shared.
 
 ## systemd service
 
