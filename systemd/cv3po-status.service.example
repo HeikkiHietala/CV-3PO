@@ -5,10 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=YOUR_USER
-WorkingDirectory=%h/cv3po
-EnvironmentFile=%h/cv3po/.env
-ExecStart=%h/cv3po/venv/bin/python %h/cv3po/src/status_fetch.py
-
-[Install]
-WantedBy=multi-user.target
+User=__CV3PO_USER__
+WorkingDirectory=__PROJECT_DIR__
+EnvironmentFile=__PROJECT_DIR__/.env
+ExecStart=__PROJECT_DIR__/venv/bin/python __PROJECT_DIR__/src/status_fetch.py

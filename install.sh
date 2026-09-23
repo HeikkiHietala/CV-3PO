@@ -83,5 +83,18 @@ sudo a2ensite cv3po.conf >/dev/null
 sudo apache2ctl configtest
 sudo systemctl restart apache2
 
+echo "Installing CV-3PO status service..."
+sed \
+    -e "s|__CV3PO_USER__|$CV3PO_USER|g" \
+    -e "s|__PROJECT_DIR__|$PROJECT_DIR|g" \
+    "$PROJECT_DIR/systemd/cv3po-status.service.example" \
+    | sudo tee /etc/systemd/system/cv3po-status.service >/dev/null
+
+sudo install -m 644 \
+    "$PROJECT_DIR/systemd/cv3po-status.timer.example" \
+    /etc/systemd/system/cv3po-status.timer
+
+sudo systemctl daemon-reload
+
 echo
 echo "Installer preflight OK."

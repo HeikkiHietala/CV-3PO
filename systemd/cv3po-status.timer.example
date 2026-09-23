@@ -1,0 +1,10 @@
+[Unit]
+Description=Update CV-3PO vehicle status regularly
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
