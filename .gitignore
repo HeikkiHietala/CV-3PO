@@ -28,3 +28,8 @@ Thumbs.db
 
 # Third-party PSA Car Controller source
 src/psacc-src/
+
+# Authentication backup files
+src/oauth.json.*
+src/otp.bin.*
+src/remote_credentials.json.*

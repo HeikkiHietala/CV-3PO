@@ -12,6 +12,7 @@ import requests
 
 BASE_DIR = Path(__file__).resolve().parent
 OAUTH_FILE = BASE_DIR / "oauth.json"
+STATUS_FILE = BASE_DIR.parent / "data" / "status.json"
 
 API_BASE = "https://api.groupe-psa.com"
 VEHICLES_URL = API_BASE + "/connectedcar/v4/user/vehicles"
@@ -226,11 +227,8 @@ def status_summary(status):
     }
 
 def main():
-    if not STATUS_URL:
-        fail("STATUS_URL environment variable is missing")
+    STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    if not STATUS_KEY:
-        fail("STATUS_KEY environment variable is missing")
     if not OAUTH_FILE.exists():
         fail("Missing required file: " + str(OAUTH_FILE))
 
@@ -259,17 +257,20 @@ def main():
         "source": "ec4pi",
     }
 
-    r = requests.post(
-        STATUS_URL,
-        headers={"X-EC4-Status-Key": STATUS_KEY, "Content-Type": "application/json"},
-        data=json.dumps(payload, ensure_ascii=False),
-        timeout=30,
-    )
-    if not 200 <= r.status_code < 300:
-        fail("status upload rejected: " + safe_error(r))
+    atomic_json(STATUS_FILE, payload)
+
+    if STATUS_URL and STATUS_KEY:
+        r = requests.post(
+            STATUS_URL,
+            headers={"X-EC4-Status-Key": STATUS_KEY, "Content-Type": "application/json"},
+            data=json.dumps(payload, ensure_ascii=False),
+            timeout=30,
+        )
+        if not 200 <= r.status_code < 300:
+            fail("status upload rejected: " + safe_error(r))
 
     s = payload["summary"]
-    print(f"Status uploaded: SoC={s.get('soc')}% range={s.get('rangeKm')} km")
+    print(f"Status saved: SoC={s.get('soc')}% range={s.get('rangeKm')} km")
 
 
 if __name__ == "__main__":
