@@ -63,6 +63,12 @@ else
     echo "Existing .env preserved."
 fi
 
+echo "Setting up vehicle authentication..."
+set -a
+source "$PROJECT_DIR/.env"
+set +a
+"$PROJECT_DIR/venv/bin/python" "$PROJECT_DIR/src/setup_auth.py"
+
 echo "Installing CV-3PO web interface..."
 sudo install -d -m 755 -o root -g root /var/www/cv3po
 sudo cp -a "$PROJECT_DIR/web/." /var/www/cv3po/
