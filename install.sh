@@ -18,6 +18,17 @@ echo "User:    $CV3PO_USER"
 echo "Project: $PROJECT_DIR"
 echo
 
+echo "Installing required system packages..."
+sudo apt-get update
+sudo apt-get install -y \
+    git \
+    python3 \
+    python3-venv \
+    python3-pip \
+    apache2 \
+    php \
+    libapache2-mod-php
+
 echo "Creating CV-3PO system group..."
 sudo groupadd -f cv3po
 
@@ -27,6 +38,30 @@ sudo usermod -aG cv3po www-data
 
 echo "Creating CV-3PO runtime directory..."
 sudo install -d -m 2770 -o "$CV3PO_USER" -g cv3po /var/lib/cv3po
+
+echo "Setting up Python environment..."
+if [ ! -d "$PROJECT_DIR/venv" ]; then
+    python3 -m venv "$PROJECT_DIR/venv"
+fi
+
+"$PROJECT_DIR/venv/bin/python" -m pip install --upgrade pip
+"$PROJECT_DIR/venv/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
+
+echo "Checking PSA Car Controller dependency..."
+if [ ! -d "$PROJECT_DIR/src/psacc-src/.git" ]; then
+    git clone https://github.com/flobz/psa_car_controller.git "$PROJECT_DIR/src/psacc-src"
+else
+    echo "PSA Car Controller already installed."
+fi
+
+echo "Preparing CV-3PO configuration..."
+if [ ! -f "$PROJECT_DIR/.env" ]; then
+    cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
+    chmod 600 "$PROJECT_DIR/.env"
+    echo "Created .env from .env.example."
+else
+    echo "Existing .env preserved."
+fi
 
 echo "Installing CV-3PO web interface..."
 sudo install -d -m 755 -o root -g root /var/www/cv3po
