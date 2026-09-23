@@ -1,5 +1,10 @@
 <?php
-$statusFile = __DIR__ . '/../data/status.json';
+$installedStatusFile = '/var/lib/cv3po/status.json';
+$developmentStatusFile = __DIR__ . '/../data/status.json';
+
+$statusFile = file_exists($installedStatusFile)
+    ? $installedStatusFile
+    : $developmentStatusFile;
 
 if (!is_readable($statusFile)) {
     http_response_code(503);

@@ -12,7 +12,7 @@ import requests
 
 BASE_DIR = Path(__file__).resolve().parent
 OAUTH_FILE = BASE_DIR / "oauth.json"
-STATUS_FILE = BASE_DIR.parent / "data" / "status.json"
+STATUS_FILE = Path(os.environ.get("STATUS_FILE", BASE_DIR.parent / "data" / "status.json"))
 
 API_BASE = "https://api.groupe-psa.com"
 VEHICLES_URL = API_BASE + "/connectedcar/v4/user/vehicles"
