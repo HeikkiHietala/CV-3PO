@@ -27,8 +27,12 @@ sudo apt-get install -y \
     python3-venv \
     python3-pip \
     apache2 \
+    avahi-daemon \
     php \
     libapache2-mod-php
+
+echo "Enabling local network discovery..."
+sudo systemctl enable --now avahi-daemon
 
 echo "Configuring CV-3PO hostname..."
 if [ "$(hostname)" != "$CV3PO_HOSTNAME" ]; then
