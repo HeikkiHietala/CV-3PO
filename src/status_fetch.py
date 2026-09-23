@@ -258,6 +258,7 @@ def main():
     }
 
     atomic_json(STATUS_FILE, payload)
+    os.chmod(STATUS_FILE, 0o640)
 
     if STATUS_URL and STATUS_KEY:
         r = requests.post(
