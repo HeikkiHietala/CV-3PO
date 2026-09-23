@@ -87,7 +87,19 @@ def require_env(name):
         fail(f"Missing required environment variable: {name}")
     return value
 
+def extract_authorization_code(value):
+    value = value.strip()
 
+    if "code=" in value:
+        value = value.split("code=", 1)[1].split("&", 1)[0]
+
+    if len(value) != 36:
+        fail(
+            "Authorization code should be 36 characters. "
+            "Paste either the code itself or the complete redirect URL."
+        )
+
+    return value
 
 
 def save_oauth_client_to_env(client_id, client_secret):
@@ -476,8 +488,16 @@ def main():
         print()
         print(login_url)
         print()
-        code = input("Enter the 36-character authorization code: ").strip()
+        print("After completing the Citroen login, the browser may appear to do nothing.")
+        print("If that happens:")
+        print("  1. Open Developer Tools (F12).")
+        print("  2. Select the Console tab.")
+        print("  3. Find the message containing mymacsdk://oauth2redirect/...")
+        print("  4. Copy either the complete redirect URL or just the code= value.")
+        print()
 
+        code_input = input("Paste the authorization code or redirect URL: ")
+        code = extract_authorization_code(code_input)
         try:
             manager.connect_with_code(code)
         except Exception as exc:
