@@ -64,6 +64,23 @@ def load_json(path: Path):
     except Exception as exc:
         fail(f"Could not read {path.name}: {exc}")
 
+def load_env_file():
+    if not ENV_FILE.exists():
+        return
+
+    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        name, value = line.split("=", 1)
+        name = name.strip()
+        value = value.strip().strip('"').strip("'")
+
+        if name:
+            os.environ.setdefault(name, value)        
+
 def require_env(name):
     value = os.environ.get(name)
     if not value:
@@ -304,6 +321,7 @@ def create_remote_credentials(client_id, access_token, realm):
 
 
 def main():
+    load_env_file()
     print("CV-3PO initial authentication setup")
     print("-----------------------------------")
 
