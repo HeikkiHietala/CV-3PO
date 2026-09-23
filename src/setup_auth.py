@@ -281,41 +281,68 @@ def create_remote_credentials(client_id, access_token, realm):
         "Content-Type": "application/json",
     }
 
-    try:
-        otp = load_otp(str(OTP_FILE))
-        if otp is None:
-            fail("otp.bin could not be loaded")
+    max_attempts = 3
+    response = None
 
-        otp_password = otp.get_otp_code()
-        save_otp(otp, str(OTP_FILE))
-        os.chmod(OTP_FILE, 0o600)
-
-        if not otp_password:
-            fail("OTP generator returned an empty value")
-
-        response = requests.post(
-            remote_token_url,
-            params={"client_id": client_id},
-            headers=headers,
-            json={
-                "grant_type": "password",
-                "password": otp_password,
-            },
-            timeout=30,
-        )
-
-    except SystemExit:
-        raise
-    except Exception as exc:
-        fail(f"Remote token request failed: {exc}")
-    finally:
+    for attempt in range(1, max_attempts + 1):
         otp_password = None
 
-    if not response.ok:
-        fail(
+        try:
+            otp = load_otp(str(OTP_FILE))
+            if otp is None:
+                fail("otp.bin could not be loaded")
+
+            otp_password = otp.get_otp_code()
+            save_otp(otp, str(OTP_FILE))
+            os.chmod(OTP_FILE, 0o600)
+
+            if not otp_password:
+                fail("OTP generator returned an empty value")
+
+            response = requests.post(
+                remote_token_url,
+                params={"client_id": client_id},
+                headers=headers,
+                json={
+                    "grant_type": "password",
+                    "password": otp_password,
+                },
+                timeout=30,
+            )
+
+        except SystemExit:
+            raise
+        except Exception as exc:
+            if attempt == max_attempts:
+                fail(f"Remote token request failed: {exc}")
+
+            print(
+                f"Remote token request failed "
+                f"(attempt {attempt}/{max_attempts})."
+            )
+            print("Retrying in 5 seconds...")
+            time.sleep(5)
+            continue
+
+        finally:
+            otp_password = None
+
+        if response.ok:
+            break
+
+        if attempt == max_attempts:
+            fail(
+                "Remote token request rejected after "
+                f"{max_attempts} attempts: HTTP {response.status_code}"
+            )
+
+        print(
             "Remote token request rejected: "
-            f"HTTP {response.status_code}"
+            f"HTTP {response.status_code} "
+            f"(attempt {attempt}/{max_attempts})."
         )
+        print("Retrying with a new OTP code in 5 seconds...")
+        time.sleep(5)
 
     try:
         data = response.json()
