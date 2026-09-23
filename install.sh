@@ -49,7 +49,9 @@ echo "Creating CV-3PO runtime directory..."
 sudo install -d -m 2770 -o "$CV3PO_USER" -g cv3po /var/lib/cv3po
 
 echo "Setting up Python environment..."
-if [ ! -d "$PROJECT_DIR/venv" ]; then
+if [ ! -x "$PROJECT_DIR/venv/bin/python" ] || [ ! -x "$PROJECT_DIR/venv/bin/pip" ]; then
+    echo "Creating or repairing Python virtual environment..."
+    rm -rf "$PROJECT_DIR/venv"
     python3 -m venv "$PROJECT_DIR/venv"
 fi
 
