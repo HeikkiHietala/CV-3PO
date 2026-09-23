@@ -13,6 +13,7 @@ fi
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CV3PO_USER="$(id -un)"
+CV3PO_HOSTNAME="cv3po"
 
 echo "User:    $CV3PO_USER"
 echo "Project: $PROJECT_DIR"
@@ -28,6 +29,14 @@ sudo apt-get install -y \
     apache2 \
     php \
     libapache2-mod-php
+
+echo "Configuring CV-3PO hostname..."
+if [ "$(hostname)" != "$CV3PO_HOSTNAME" ]; then
+    sudo hostnamectl set-hostname "$CV3PO_HOSTNAME"
+    echo "Hostname changed to $CV3PO_HOSTNAME."
+else
+    echo "Hostname already set to $CV3PO_HOSTNAME."
+fi
 
 echo "Creating CV-3PO system group..."
 sudo groupadd -f cv3po
@@ -95,6 +104,15 @@ sudo install -m 644 \
     /etc/systemd/system/cv3po-status.timer
 
 sudo systemctl daemon-reload
+sudo systemctl enable --now cv3po-status.timer
 
 echo
-echo "Installer preflight OK."
+echo "================================"
+echo "CV-3PO installation complete."
+echo "================================"
+echo
+echo "Vehicle status updates are running automatically."
+echo "Open CV-3PO in your browser:"
+echo
+echo "    http://cv3po.local/"
+echo
