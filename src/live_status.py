@@ -1,21 +1,42 @@
 #!/usr/bin/env python3
+import json
 import os
-import subprocess, sys, time
+import subprocess
+import sys
+import time
 from pathlib import Path
+
 import requests
 
+
 BASE_DIR = Path(__file__).resolve().parent
+
 STATUS_URL = os.environ.get("STATUS_URL")
+STATUS_FILE = Path(
+    os.environ.get("STATUS_FILE", "/var/lib/cv3po/status.json")
+)
+
 POLL_INTERVAL = 20
 MAX_WAIT = 120
+
 
 def log(msg):
     print(time.strftime("%Y-%m-%d %H:%M:%S"), msg, flush=True)
 
+
 def get_cached():
-    r = requests.get(STATUS_URL, params={"ts": int(time.time())}, timeout=20)
-    r.raise_for_status()
-    return r.json()
+    if STATUS_URL:
+        r = requests.get(
+            STATUS_URL,
+            params={"ts": int(time.time())},
+            timeout=20,
+        )
+        r.raise_for_status()
+        return r.json()
+
+    with STATUS_FILE.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
 
 def created_at(data):
     try:
@@ -23,6 +44,7 @@ def created_at(data):
         return e[0].get("createdAt") if e else None
     except Exception:
         return None
+
 
 def run(name, timeout=90):
     p = subprocess.run(
@@ -36,11 +58,14 @@ def run(name, timeout=90):
     print(p.stdout, end="", flush=True)
     return p.returncode
 
-def main():
-    if not STATUS_URL:
-        raise SystemExit("Missing required environment variable: STATUS_URL")
 
+def main():
     log("Live status refresh started")
+
+    if STATUS_URL:
+        print(f"Status source: remote endpoint", flush=True)
+    else:
+        print(f"Status source: local file {STATUS_FILE}", flush=True)
 
     try:
         baseline = created_at(get_cached())
@@ -74,15 +99,23 @@ def main():
                 data = get_cached()
                 current = created_at(data)
                 s = data.get("summary", {})
+
                 print(
                     f"SoC={s.get('soc')}% range={s.get('rangeKm')} km "
                     f"energy_createdAt={current or 'unknown'}",
                     flush=True,
                 )
 
+                # If there was no previous cached status, the first
+                # successful fetch is already useful fresh data.
+                if baseline is None and current:
+                    log("Vehicle data received")
+                    return 0
+
                 if baseline and current and current != baseline:
                     log("Fresh vehicle data confirmed")
                     return 0
+
             except Exception as exc:
                 print("Status inspection failed:", exc, flush=True)
 
@@ -95,6 +128,7 @@ def main():
             return 2
 
         time.sleep(POLL_INTERVAL)
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

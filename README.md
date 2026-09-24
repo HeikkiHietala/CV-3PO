@@ -13,24 +13,40 @@ CV-3PO is an experimental Raspberry Pi based interface for retrieving status dat
 
 ## Installation
 
-Clone the repository, create a Python virtual environment, and install the required Python packages:
+CV-3PO is designed to be installed on Raspberry Pi OS using the included installer.
+
+On a fresh Raspberry Pi OS installation, install Git first if it is not already available:
+
+```bash
+sudo apt update
+sudo apt install -y git
+```
 
 ```bash
 git clone https://github.com/HeikkiHietala/CV-3PO.git cv3po
 cd cv3po
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+```
+
+Run the installer as your normal user:
+
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+Do not run the installer as root.
+
+The installer installs the required system and Python packages, creates the Python virtual environment, installs the PSA Car Controller dependency, prepares the local runtime directory and configuration, runs vehicle authentication setup, and installs the CV-3PO web interface and systemd services.
+
+When installation is complete, open:
+
+```
+http://cv3po.local/
 ```
 
 ## Configuration
 
-Copy the example configuration and edit it with your own endpoint settings:
-
-```bash
-cp .env.example .env
-chmod 600 .env
-```
+The installer creates `.env` automatically from `.env.example` if it does not already exist.
 
 The Stellantis OAuth client ID and client secret do not need to be entered manually. They are discovered automatically during authentication setup and stored locally in `.env`.
 
@@ -38,11 +54,7 @@ Never commit `.env`, OAuth tokens, OTP data, remote credentials, VINs, API keys,
 
 ## PSA Car Controller dependency
 
-The current wakeup implementation uses the OTP support from the upstream `psa_car_controller` project. Clone it into `src/psacc-src`:
-
-```bash
-git clone https://github.com/flobz/psa_car_controller.git src/psacc-src
-```
+The current wakeup implementation uses OTP support from the upstream `psa_car_controller` project. The installer automatically clones this dependency into `src/psacc-src`.
 
 The upstream project is licensed under GPLv3 and is intentionally kept outside this repository.
 
@@ -71,9 +83,9 @@ python src/live_status.py
 
 ## Authentication files
 
-Run the authentication setup before using remote vehicle commands.
+The installer runs the interactive vehicle authentication setup automatically.
 
-Run `python src/setup_auth.py`.
+To run the authentication setup manually, use `python src/setup_auth.py`.
 
 If authentication setup is interrupted, run the same command again. Completed authentication stages are reused where possible.
 
@@ -87,32 +99,18 @@ These files contain private authentication material, are excluded by `.gitignore
 
 ## systemd service
 
-A tested oneshot service example is included in `systemd/cv3po-status.service.example`.
+The installer configures and enables the CV-3PO status service and timer automatically.
 
-Copy the example service file into systemd:
-
-```bash
-sudo cp systemd/cv3po-status.service.example /etc/systemd/system/cv3po-status.service
-```
-
-Edit the installed service file and replace `YOUR_USER` with your Linux username:
+Check the timer with:
 
 ```bash
-sudo micro /etc/systemd/system/cv3po-status.service
+systemctl status cv3po-status.timer --no-pager
 ```
 
-Then reload systemd and start the service:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl start cv3po-status.service
-```
-
-Check the result with:
+Check the status service with:
 
 ```bash
 systemctl status cv3po-status.service --no-pager
 ```
 
-The service uses the project virtual environment and loads configuration from `.env` through `EnvironmentFile=`.
-
+The service uses the project virtual environment and loads configuration from `.env`.
