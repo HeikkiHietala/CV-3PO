@@ -42,6 +42,23 @@ else
     echo "Hostname already set to $CV3PO_HOSTNAME."
 fi
 
+# Keep local hostname resolution in sync with the configured hostname.
+if grep -q '^127\.0\.1\.1' /etc/hosts; then
+    sudo sed -i "s/^127\\.0\\.1\\.1.*/127.0.1.1 $CV3PO_HOSTNAME $CV3PO_HOSTNAME/" /etc/hosts
+else
+    echo "127.0.1.1 $CV3PO_HOSTNAME $CV3PO_HOSTNAME" | sudo tee -a /etc/hosts >/dev/null
+fi
+
+# Raspberry Pi OS may regenerate /etc/hosts through cloud-init.
+CLOUD_HOSTS_TEMPLATE="/etc/cloud/templates/hosts.debian.tmpl"
+if [ -f "$CLOUD_HOSTS_TEMPLATE" ]; then
+    if grep -q '^127\.0\.1\.1' "$CLOUD_HOSTS_TEMPLATE"; then
+        sudo sed -i "s/^127\\.0\\.1\\.1.*/127.0.1.1 $CV3PO_HOSTNAME $CV3PO_HOSTNAME/" "$CLOUD_HOSTS_TEMPLATE"
+    else
+        echo "127.0.1.1 $CV3PO_HOSTNAME $CV3PO_HOSTNAME" | sudo tee -a "$CLOUD_HOSTS_TEMPLATE" >/dev/null
+    fi
+fi
+
 echo "Creating CV-3PO system group..."
 sudo groupadd -f cv3po
 
