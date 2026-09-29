@@ -564,7 +564,7 @@ def main():
         print("SMS activation code requested.")
         print()
         sms_code = input("Enter the SMS activation code: ").strip()
-        pin_code = input("Choose a PIN for remote commands: ").strip()
+        pin_code = input("Enter the 4-digit PIN used in the MyCitroën app: ").strip()
 
         if not sms_code:
             fail("SMS activation code cannot be empty")
