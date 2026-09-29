@@ -129,6 +129,9 @@ sudo install -m 644 \
 sudo systemctl daemon-reload
 sudo systemctl enable --now cv3po-status.timer
 
+echo "Refreshing local network discovery..."
+sudo systemctl restart avahi-daemon
+
 echo
 echo "================================"
 echo "CV-3PO installation complete."
