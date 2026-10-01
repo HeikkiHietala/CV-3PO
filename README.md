@@ -44,6 +44,68 @@ When installation is complete, open:
 http://cv3po.local/
 ```
 
+## Reference web interface
+
+CV-3PO includes a deliberately simple reference web interface.
+
+After installation it is available on the local network at:
+
+    http://cv3po.local/
+
+The interface displays the normalized vehicle status currently available
+from CV-3PO, including battery, range, odometer, temperature, charging,
+door and preconditioning information.
+
+The reference interface is intentionally simple. It is designed to
+demonstrate the available data rather than define how a finished user
+interface should look.
+
+The web interface is implemented in `web/index.php`. It can be modified
+or replaced without changing the vehicle communication layer.
+
+## Architecture and status data
+
+CV-3PO separates vehicle communication from presentation:
+
+    Stellantis connected-car services
+                  |
+                  v
+           CV-3PO Python tools
+                  |
+                  v
+     /var/lib/cv3po/status.json
+                  |
+                  v
+           web/index.php
+                  |
+                  v
+              Web browser
+
+The local status file acts as the interface between the vehicle
+communication layer and applications using the data.
+
+The installed web interface reads:
+
+    /var/lib/cv3po/status.json
+
+The `summary` object in this file contains the normalized values intended
+for applications and user interfaces.
+
+This design allows a custom web interface or another local application
+to use vehicle status data without implementing Stellantis authentication,
+OAuth, MQTT or vehicle communication itself.
+
+### Data freshness
+
+The status file contains the most recently retrieved vehicle state.
+
+It should not be interpreted as a guaranteed real-time connection to the
+vehicle. A vehicle may be asleep, temporarily unreachable, or the latest
+status request may not yet have completed.
+
+Applications using `status.json` should therefore also consider the
+status update timestamp when presenting the data.
+
 ## Configuration
 
 The installer creates `.env` automatically from `.env.example` if it does not already exist.
